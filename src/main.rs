@@ -12,13 +12,9 @@ use aes::cipher::{
     generic_array::GenericArray,
 };
 extern crate hex;
-use hex::{
-    decode,
-};
 extern crate rand;
 use rand::{ Rng, thread_rng };
 
-use std::io::prelude::*;
 use std::path::{PathBuf,Path};
 
 #[derive(Debug,StructOpt)]
@@ -29,10 +25,13 @@ struct Opt {
     #[structopt(short,long)]
     /// Hex-encoded key to be used for encryption/decryption
     key: String,
+    #[structopt(long)]
+    /// Enable to delete existing files
+    delete: bool,
 }
 
 
-fn encrypt_file<P: AsRef<Path>>(cipher: Aes256, path: P) -> anyhow::Result<()> {
+fn encrypt_file<P: AsRef<Path>>(cipher: Aes256, path: P, delete: bool) -> anyhow::Result<()> {
     let path = path.as_ref();
     if !path.is_file() {
         println!("Test");
@@ -48,6 +47,9 @@ fn encrypt_file<P: AsRef<Path>>(cipher: Aes256, path: P) -> anyhow::Result<()> {
         };
         std::fs::write(path.with_extension(extension), contents)?;
         info!("Encrypted file {}", path.display());
+        if delete {
+            std::fs::write(path, "")?;
+        }
 
 
 
@@ -56,7 +58,7 @@ fn encrypt_file<P: AsRef<Path>>(cipher: Aes256, path: P) -> anyhow::Result<()> {
 
 }
 
-fn encrypt_directory<P: AsRef<Path>+Send+Sync>(path: P, key: &[u8]) -> anyhow::Result<()> {
+fn encrypt_directory<P: AsRef<Path>+Send+Sync>(path: P, key: &[u8], delete: bool) -> anyhow::Result<()> {
     let cipher = Aes256::new_from_slice(key)
         .map_err(|_| anyhow!("Invalid key length."))?;
     let path = path.as_ref();
@@ -69,10 +71,10 @@ fn encrypt_directory<P: AsRef<Path>+Send+Sync>(path: P, key: &[u8]) -> anyhow::R
         if let Ok(entry) = entry {
             if let Ok(file_type) = entry.file_type() {
                 if file_type.is_file() {
-                    encrypt_file(cipher.clone(), entry.path())?;
+                    encrypt_file(cipher.clone(), entry.path(), delete)?;
                 }
                 else if file_type.is_dir() {
-                    encrypt_directory(entry.path(), &key)?;
+                    encrypt_directory(entry.path(), &key, delete)?;
                 }
             }
         }
@@ -91,6 +93,6 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run(opt: Opt) -> anyhow::Result<()> {
-    encrypt_directory(opt.dir, &hex::decode(&opt.key)?)?;
+    encrypt_directory(opt.dir, &hex::decode(&opt.key)?, opt.delete)?;
     Ok(())
 }
