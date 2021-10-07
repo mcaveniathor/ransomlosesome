@@ -1,0 +1,15 @@
+[package]
+name = "ransomlosesome"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = { version = "0.3" }
+log = "0.4"
+pretty_env_logger = "0.3"
+anyhow = "1.0"
+aes = { version = "0.7", features = ["ctr"] }
+hex = "0.4"
+rand = "0.8.0"
